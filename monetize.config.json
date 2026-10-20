@@ -1,0 +1,16 @@
+{
+  "name": "choihama",
+  "title": "ちょいハマ",
+  "siteUrl": "https://minolu-29.github.io/choihama/",
+  "customDomain": "",
+  "contact": "",
+  "web": {
+    "adsenseClient": "",
+    "adTest": true,
+    "adFrequency": "120s",
+    "ga4": ""
+  },
+  "gamedistribution": {
+    "gameId": ""
+  }
+}

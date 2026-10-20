@@ -4,17 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>ちょいハマ｜1分でハマるミニゲーム20</title>
+<!--WEB-HEAD-->
 <meta name="description" content="1タップで遊べるミニゲーム20本。ピタ積み、ピタッと10秒、反射神経テスト、もぐらタップなど。ベストを画像にしてシェアしよう。">
 <meta name="theme-color" content="#fff4c9">
 <meta property="og:type" content="website">
 <meta property="og:title" content="ちょいハマ｜1分でハマるミニゲーム20">
 <meta property="og:description" content="1タップで遊べるミニゲーム20本。あなたは何点いける？">
-<meta property="og:image" content="https://minolu-29.github.io/choihama/og.png">
-<meta property="og:url" content="https://minolu-29.github.io/choihama/">
+<meta property="og:image" content="%SITE_URL%og.png">
+<meta property="og:url" content="%SITE_URL%">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
+<!--/WEB-HEAD-->
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap">
 <style>/* レイアウト: ホームはゲームのステッカーを並べた棚、プレイ中は上にバー、下に正方形に近いステージ */
 :root{
@@ -81,6 +83,7 @@ button:focus-visible{outline:3px solid #6b4dff;outline-offset:2px}
 .btn.dark{background:var(--ink);color:var(--paper)}
 .next{font-size:13px;font-weight:700;color:var(--muted)}
 .next button{cursor:pointer;background:none;border:0;padding:0;font-weight:800;color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.langs a{color:var(--muted);font-size:13px;font-weight:700;padding:4px 8px}
 
 /* シェア */
 .sheet-ov{position:fixed;inset:0;background:rgba(29,22,48,.55);z-index:40;display:flex;align-items:flex-end;justify-content:center;padding:12px}
@@ -114,7 +117,12 @@ button:focus-visible{outline:3px solid #6b4dff;outline-offset:2px}
 #play .bar h2{font-size:18px}
 #play .hud{min-height:1.5em}
 body.playing{overflow:hidden;overscroll-behavior:none}
+body{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.on-portal .foot{display:none}
+.langs{text-align:center;margin:0}
+.langs button{cursor:pointer;background:none;border:0;padding:4px 8px;color:var(--muted);font-weight:700;font-size:13px;text-decoration:underline;text-underline-offset:3px}
 </style>
+<!--PLATFORM-->
 </head>
 <body>
 <div class="wrap">
@@ -126,6 +134,7 @@ body.playing{overflow:hidden;overscroll-behavior:none}
     </header>
     <div class="shelf" id="shelf"></div>
     <p class="foot">記録はこの端末のブラウザにだけ保存されます</p>
+    <p class="langs"><button type="button" id="lang">English</button><!--PRIVACY-LINK--></p>
   </section>
 
   <section id="play" hidden>
@@ -142,7 +151,37 @@ body.playing{overflow:hidden;overscroll-behavior:none}
   </section>
 </div>
 
-<script>/* ちょいハマ 共通エンジン: ゲーム登録、プレイ画面、スコア保存、結果画像、効果音 */
+<script>
+(window.PLATFORM && window.PLATFORM.init ? window.PLATFORM.init() : Promise.resolve()).then(() => {
+/* 言語: ?lang=en / 前回の選択 / ブラウザの言語 の順で決める。日本語以外は英語 */
+const LANG = (() => {
+  try { const q = new URLSearchParams(location.search).get("lang"); if (q) return q === "ja" ? "ja" : "en"; } catch (e) {}
+  try { const s = localStorage.getItem("lang"); if (s) return s; } catch (e) {}
+  if (window.PLATFORM && window.PLATFORM.lang) return window.PLATFORM.lang;
+  return /^ja\b/i.test(navigator.language || "") ? "ja" : "en";
+})();
+const EN = LANG !== "ja";
+const tr = (ja, en) => EN ? en : ja;
+/* HTMLに直接書いてある文字の英語版と、言語の切り替え */
+(() => {
+  const q = sel => document.querySelector(sel);
+  if (EN) {
+    document.documentElement.lang = "en";
+    q(".hero .tag").textContent = "One minute each · All free";
+    q(".hero h1").innerHTML = "Choi<span>hama</span>";
+    q(".hero p").textContent = "20 one-tap mini games. Beat your best and brag about it with a result image.";
+    q(".foot").textContent = "Your records are saved only in this browser";
+    q("#back").textContent = "‹ Home";
+  }
+  const btn = q("#lang");
+  btn.textContent = EN ? "日本語" : "English";
+  btn.onclick = () => {
+    const next = EN ? "ja" : "en";
+    try { localStorage.setItem("lang", next); } catch (e) {}
+    const u = new URL(location.href); u.searchParams.set("lang", next); location.replace(u.href);
+  };
+})();
+/* ちょいハマ 共通エンジン: ゲーム登録、プレイ画面、スコア保存、結果画像、効果音 */
 const $ = (s, r = document) => r.querySelector(s);
 const GAMES = [];
 const game = def => GAMES.push(def);
@@ -151,12 +190,16 @@ const ri = (a, b) => Math.floor(rnd(a, b + 1));
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const store = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || "null"); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } };
+const PF = window.PLATFORM || {};
+const _ls = () => PF.storage || localStorage;
+const store = (k, v) => { try { if (v === undefined) return JSON.parse(_ls().getItem(k) || "null"); _ls().setItem(k, JSON.stringify(v)); } catch (e) { return null; } };
+const adGate = fn => PF.midgame ? PF.midgame(fn) : fn();
+const track = (name, params) => { try { PF.track && PF.track(name, params); } catch (e) {} };
 
 /* ---------- 効果音 ---------- */
 let AC = null, muted = !!store("ch-mute");
 function beep(freq = 660, dur = 0.08, type = "sine", vol = 0.12) {
-  if (muted) return;
+  if (muted || PF.adPlaying) return;
   try {
     AC = AC || new (window.AudioContext || window.webkitAudioContext)();
     if (AC.state === "suspended") AC.resume();
@@ -195,9 +238,11 @@ const rankOf = (g, s) => (g.lower ? g.ranks.find(r => s <= r[0]) : g.ranks.find(
 function renderHub() {
   $("#shelf").innerHTML = GAMES.map((g, i) => {
     const b = bestOf(g);
-    return `<button class="card" type="button" data-g="${g.id}">
+    return tr(`<button class="card" type="button" data-g="${g.id}">
       <span class="badge" style="background:${g.color}"><small>${String(i + 1).padStart(2, "0")}</small>${g.glyph}</span>
-      <b>${esc(g.name)}</b><span class="best">${b === null ? "まだ遊んでない" : "ベスト " + esc(g.fmt(b))}</span></button>`;
+      <b>${esc(g.name)}</b><span class="best">${b === null ? "まだ遊んでない" : "ベスト " + esc(g.fmt(b))}</span></button>`, `<button class="card" type="button" data-g="${g.id}">
+      <span class="badge" style="background:${g.color}"><small>${String(i + 1).padStart(2, "0")}</small>${g.glyph}</span>
+      <b>${esc(g.name)}</b><span class="best">${b === null ? "Not played yet" : "Best " + esc(g.fmt(b))}</span></button>`);
   }).join("");
 }
 $("#shelf").addEventListener("click", e => { const c = e.target.closest("[data-g]"); if (c) go(c.dataset.g); });
@@ -215,20 +260,22 @@ function go(id) {
   try { if (location.hash !== "#" + id) history.replaceState(null, "", "#" + id); } catch (e) {}
   $("#hub").hidden = true; $("#play").hidden = false; document.body.classList.add("playing");
   document.documentElement.style.setProperty("--gc", g.color);
-  $("#g-title").textContent = g.name; document.title = g.name + "｜ちょいハマ";
+  $("#g-title").textContent = g.name; document.title = g.name + tr("｜ちょいハマ", " | Choihama");
   $("#stage").innerHTML = ""; hud("", ""); stageSize();
   const b = bestOf(g);
   const ov = $("#ov");
-  ov.innerHTML = `<h2>${esc(g.name)}</h2><p class="how">${g.how}</p>
+  ov.innerHTML = tr(`<h2>${esc(g.name)}</h2><p class="how">${g.how}</p>
     ${b === null ? "" : `<p class="sub">ベスト ${esc(g.fmt(b))}</p>`}
-    <button class="btn" type="button" id="start">スタート</button>`;
+    <button class="btn" type="button" id="start">スタート</button>`, `<h2>${esc(g.name)}</h2><p class="how">${g.how}</p>
+    ${b === null ? "" : `<p class="sub">Best ${esc(g.fmt(b))}</p>`}
+    <button class="btn" type="button" id="start">Start</button>`);
   ov.hidden = false; $("#start").onclick = start; $("#start").focus({ preventScroll: true });
   window.scrollTo(0, 0);
 }
 function home() {
   if (ctx) ctx.kill(); ctx = null; cur = null;
   try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
-  document.title = "ちょいハマ｜1分でハマるミニゲーム20";
+  document.title = tr("ちょいハマ｜1分でハマるミニゲーム20", "Choihama | 20 One-Minute Mini Games");
   $("#play").hidden = true; $("#hub").hidden = false; document.body.classList.remove("playing"); renderHub();
 }
 function hud(l, r) { $("#hud-l").innerHTML = l; $("#hud-r").innerHTML = r; }
@@ -238,6 +285,8 @@ function start() {
   const g = cur, stage = $("#stage");
   stage.innerHTML = ""; $("#ov").hidden = true; stageSize();
   beep(1, 0.001, "sine", 0.0001); // 音を使えるようにする
+  if (PF.gameplayStart) PF.gameplayStart();
+  track("game_start", { game: g.id });
   const subs = [];
   let alive = true, ended = false;
   ctx = {
@@ -270,32 +319,42 @@ function start() {
     },
     end(score) {
       if (ended) return; ended = true; alive = false; subs.forEach(f => f()); subs.length = 0;
+      if (PF.gameplayStop) PF.gameplayStop();
       setTimeout(() => finish(g, score), 450);
     },
-    kill() { alive = false; ended = true; subs.forEach(f => f()); subs.length = 0; },
+    kill() { if (alive && PF.gameplayStop) PF.gameplayStop(); alive = false; ended = true; subs.forEach(f => f()); subs.length = 0; },
     get alive() { return alive; },
   };
   g.play(ctx);
 }
 
 function finish(g, score) {
+  const prevBest = bestOf(g);
   const isBest = saveBest(g, score);
+  if (isBest && prevBest !== null && PF.happy) PF.happy();
+  track("game_end", { game: g.id, score });
   const [, rank] = rankOf(g, score);
   const b = bestOf(g);
   isBest ? sfx.win() : sfx.over();
   const others = GAMES.filter(x => x.id !== g.id), nx = pick(others);
   const ov = $("#ov");
-  ov.innerHTML = `${isBest ? `<span class="newbest">ベスト更新！</span>` : ""}
+  ov.innerHTML = tr(`${isBest ? `<span class="newbest">ベスト更新！</span>` : ""}
     <div class="score">${esc(g.fmt(score))}</div>
     <div class="rank">${esc(rank)}</div>
     <p class="sub">ベスト ${esc(g.fmt(b))}</p>
     <div class="btns"><button class="btn" type="button" id="again">もう一回</button>
-      <button class="btn sub" type="button" id="share">画像でシェア</button></div>
-    <p class="next">次はこれ → <button type="button" id="nx">${esc(nx.name)}</button></p>`;
+      ${PF.noShare ? "" : `<button class="btn sub" type="button" id="share">画像でシェア</button>`}</div>
+    <p class="next">次はこれ → <button type="button" id="nx">${esc(nx.name)}</button></p>`, `${isBest ? `<span class="newbest">NEW BEST!</span>` : ""}
+    <div class="score">${esc(g.fmt(score))}</div>
+    <div class="rank">${esc(rank)}</div>
+    <p class="sub">Best ${esc(g.fmt(b))}</p>
+    <div class="btns"><button class="btn" type="button" id="again">Play again</button>
+      ${PF.noShare ? "" : `<button class="btn sub" type="button" id="share">Share image</button>`}</div>
+    <p class="next">Try next → <button type="button" id="nx">${esc(nx.name)}</button></p>`);
   ov.hidden = false;
-  $("#again").onclick = start; $("#again").focus({ preventScroll: true });
-  $("#share").onclick = () => share(g, score, rank, isBest);
-  $("#nx").onclick = () => go(nx.id);
+  $("#again").onclick = () => adGate(start); $("#again").focus({ preventScroll: true });
+  if ($("#share")) $("#share").onclick = () => share(g, score, rank, isBest);
+  $("#nx").onclick = () => adGate(() => go(nx.id));
 }
 
 /* ---------- 結果画像とシェア ---------- */
@@ -310,29 +369,34 @@ async function card(g, score, rank, isBest) {
   rr(x, 106, 166, 900, 1050, 50); x.fillStyle = "#1d1630"; x.fill();
   rr(x, 90, 150, 900, 1050, 50); x.fillStyle = "#fffdf7"; x.fill(); x.lineWidth = 7; x.strokeStyle = "#1d1630"; x.stroke();
   x.textAlign = "center"; x.textBaseline = "alphabetic"; x.fillStyle = "#1d1630";
-  rr(x, 380, 100, 320, 96, 48); x.fill(); x.fillStyle = "#fffdf7"; x.font = `50px ${FD}`; x.fillText("ちょいハマ", 540, 166);
+  rr(x, 380, 100, 320, 96, 48); x.fill(); x.fillStyle = "#fffdf7"; x.font = `50px ${FD}`; x.fillText(tr("ちょいハマ", "Choihama"), 540, 166);
   x.fillStyle = "#1d1630"; fit(x, g.name, 780, 84, FD); x.fillText(g.name, 540, 330);
   rr(x, 410, 380, 260, 260, 40); x.fillStyle = g.color; x.fill(); x.lineWidth = 7; x.stroke();
   x.fillStyle = "#1d1630"; x.font = `150px ${FD}`; x.fillText(g.glyph, 540, 565);
   fit(x, g.fmt(score), 820, 190, FD); x.fillText(g.fmt(score), 540, 850);
   rr(x, 230, 900, 620, 130, 65); x.fillStyle = g.color; x.fill(); x.lineWidth = 7; x.stroke();
   x.fillStyle = "#1d1630"; fit(x, rank, 560, 70, FD); x.fillText(rank, 540, 990);
-  x.fillStyle = "#5d5470"; x.font = `800 40px ${FB}`; x.fillText(isBest ? "ベスト更新！あなたは何点いける？" : "あなたは何点いける？", 540, 1120);
-  x.fillStyle = "#1d1630"; x.font = `800 40px ${FB}`; x.fillText("#ちょいハマ", 540, 1290);
+  x.fillStyle = "#5d5470"; x.font = `800 40px ${FB}`; x.fillText(isBest ? tr("ベスト更新！あなたは何点いける？", "New best! Can you beat it?") : tr("あなたは何点いける？", "Can you beat it?"), 540, 1120);
+  x.fillStyle = "#1d1630"; x.font = `800 40px ${FB}`; x.fillText(tr("#ちょいハマ", "#Choihama"), 540, 1290);
   return c;
 }
 const pageURL = () => { try { return location.origin + location.pathname + "#" + (cur ? cur.id : ""); } catch (e) { return ""; } };
 async function share(g, score, rank, isBest) {
   const c = await card(g, score, rank, isBest);
-  const text = `ちょいハマ「${g.name}」で${g.fmt(score)}！「${rank}」\nあなたは何点いける？ #ちょいハマ`;
+  const text = tr(`ちょいハマ「${g.name}」で${g.fmt(score)}！「${rank}」\nあなたは何点いける？ #ちょいハマ`, `I scored ${g.fmt(score)} on "${g.name}" in Choihama! Rank: ${rank}\nCan you beat it? #Choihama`);
   const url = pageURL(), full = url.startsWith("http") ? text + "\n" + url : text;
   const ov = document.createElement("div"); ov.className = "sheet-ov";
-  ov.innerHTML = `<div class="sheet" role="dialog" aria-label="結果をシェア">
+  ov.innerHTML = tr(`<div class="sheet" role="dialog" aria-label="結果をシェア">
     <img alt="結果画像" src="${c.toDataURL("image/png")}">
     <p class="note">画像を長押し（パソコンは右クリック）でも保存できるよ</p>
     <div class="btns"><button class="btn" type="button" data-s>保存・シェア</button>
       <a class="btn dark" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(full)}">Xでシェア</a></div>
-    <div class="btns"><button class="btn sub" type="button" data-x>とじる</button></div></div>`;
+    <div class="btns"><button class="btn sub" type="button" data-x>とじる</button></div></div>`, `<div class="sheet" role="dialog" aria-label="Share your result">
+    <img alt="Result image" src="${c.toDataURL("image/png")}">
+    <p class="note">You can also long-press (right-click on PC) the image to save it</p>
+    <div class="btns"><button class="btn" type="button" data-s>Save / Share</button>
+      <a class="btn dark" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(full)}">Share on X</a></div>
+    <div class="btns"><button class="btn sub" type="button" data-x>Close</button></div></div>`);
   document.body.appendChild(ov);
   ov.addEventListener("click", e => { if (e.target === ov || e.target.closest("[data-x]")) ov.remove(); });
   ov.querySelector("[data-s]").onclick = () => c.toBlob(async blob => {
@@ -340,14 +404,14 @@ async function share(g, score, rank, isBest) {
     const file = new File([blob], `choihama-${g.id}.png`, { type: "image/png" });
     try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: full }); return; } }
     catch (e) { if (e && e.name === "AbortError") return; }
-    try { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); toast("保存したよ！"); }
-    catch (e) { toast("画像を長押しして保存してね"); }
+    try { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); toast(tr("保存したよ！", "Saved!")); }
+    catch (e) { toast(tr("画像を長押しして保存してね", "Long-press the image to save it")); }
   }, "image/png");
 }
 
 /* ---------- 起動 ---------- */
 $("#back").onclick = home;
-const setMute = () => { $("#mute").textContent = muted ? "音オフ" : "音オン"; $("#mute").setAttribute("aria-pressed", String(!muted)); };
+const setMute = () => { $("#mute").textContent = muted ? tr("音オフ", "Sound off") : tr("音オン", "Sound on"); $("#mute").setAttribute("aria-pressed", String(!muted)); };
 $("#mute").onclick = () => { muted = !muted; store("ch-mute", muted); setMute(); };
 setMute();
 window.addEventListener("keydown", e => { if (e.key === "Escape" && cur) home(); });
@@ -358,10 +422,10 @@ function boot() {
 
 /* ---------- 01 ピタ積み ---------- */
 game({
-  id: "stack", name: "ピタ積み", glyph: "積", color: "#ffb3c7",
-  how: "左右に動くブロックを、タップで落として積み上げよう。ピッタリ重ねると連続ボーナス！",
-  fmt: s => s + "段",
-  ranks: [[75, "宇宙建築家"], [50, "成層圏タワー"], [35, "スカイツリー級"], [20, "タワー職人"], [10, "とび職人"], [0, "見習い大工"]],
+  id: "stack", name: tr("ピタ積み", "Perfect Stack"), glyph: "積", color: "#ffb3c7",
+  how: tr("左右に動くブロックを、タップで落として積み上げよう。ピッタリ重ねると連続ボーナス！", "Tap to drop the sliding block and build a tower. Stack perfectly for a combo bonus!"),
+  fmt: s => s + tr("段", " floors"),
+  ranks: [[75, tr("宇宙建築家", "Space architect")], [50, tr("成層圏タワー", "Stratosphere tower")], [35, tr("スカイツリー級", "Skyscraper class")], [20, tr("タワー職人", "Tower builder")], [10, tr("とび職人", "Steelworker")], [0, tr("見習い大工", "Apprentice")]],
   play(c) {
     const { x, W, H } = c.canvas();
     const BH = Math.max(20, Math.round(H / 22)), BW = W * 0.56, BASE = 64;
@@ -378,7 +442,7 @@ game({
       const v = Math.min(120 + n * 6, 430) * (W / 360) * (n > 15 ? rnd(.88, 1.14) : 1);
       mv = { x: fromLeft ? -prev.w * 0.6 : W - prev.w * 0.4, w: prev.w, dir: fromLeft ? 1 : -1, v };
     }
-    const upd = () => c.hud(`連続 <b>${combo}</b>`, `<b>${score()}</b> 段`);
+    const upd = () => c.hud(tr(`連続 <b>${combo}</b>`, `Combo <b>${combo}</b>`), tr(`<b>${score()}</b> 段`, `<b>${score()}</b> floors`));
     function drop() {
       if (over || !mv) return;
       started = true;
@@ -401,8 +465,8 @@ game({
         tower.push({ x: L, w: ov }); combo = 0; c.sfx.tick();
       }
       const s = score();
-      if ([10, 25, 50, 75, 100].includes(s)) c.after(300, () => c.pop(s + "段！"));
-      else if (best > 0 && s === best + 1) c.after(300, () => c.pop("ベスト超え！", "#e8364f"));
+      if ([10, 25, 50, 75, 100].includes(s)) c.after(300, () => c.pop(s + tr("段！", " floors!")));
+      else if (best > 0 && s === best + 1) c.after(300, () => c.pop(tr("ベスト超え！", "New best!"), "#e8364f"));
       upd(); spawn();
     }
     c.on(c.stage, "pointerdown", e => { e.preventDefault(); drop(); });
@@ -453,29 +517,29 @@ game({
       });
       x.textAlign = "center"; x.font = `${Math.round(W * 0.17)}px ${FD}`; x.lineWidth = 6; x.strokeStyle = "#1d1630"; x.fillStyle = "#fffdf7";
       x.strokeText(s, W / 2, H * 0.17); x.fillText(s, W / 2, H * 0.17);
-      if (!started) { x.font = `800 16px ${FB}`; x.fillStyle = "#1d1630"; x.fillText("タップで落とす", W / 2, H * 0.17 + 34); }
+      if (!started) { x.font = `800 16px ${FB}`; x.fillStyle = "#1d1630"; x.fillText(tr("タップで落とす", "Tap to drop"), W / 2, H * 0.17 + 34); }
     });
   },
 });
 
 /* ---------- 02 ピタッと10秒 ---------- */
 game({
-  id: "stop10", name: "ピタッと10秒", glyph: "10", color: "#9fdcff", lower: true,
-  how: "タップでスタートして、10.00秒ぴったりでもう一度タップ。3秒すぎると時計が消えるよ。",
-  fmt: s => "誤差" + s.toFixed(2) + "秒",
-  ranks: [[0.01, "体内時計の神"], [0.05, "人間ストップウォッチ"], [0.15, "リズム感◎"], [0.4, "なかなか"], [1, "ちょっとズレた"], [9999, "時空がゆがんでる"]],
+  id: "stop10", name: tr("ピタッと10秒", "Exactly 10 Seconds"), glyph: "10", color: "#9fdcff", lower: true,
+  how: tr("タップでスタートして、10.00秒ぴったりでもう一度タップ。3秒すぎると時計が消えるよ。", "Tap to start, then tap again at exactly 10.00 seconds. The clock disappears after 3 seconds."),
+  fmt: s => tr("誤差", "Off by ") + s.toFixed(2) + tr("秒", "s"),
+  ranks: [[0.01, tr("体内時計の神", "Inner clock god")], [0.05, tr("人間ストップウォッチ", "Human stopwatch")], [0.15, tr("リズム感◎", "Great timing")], [0.4, tr("なかなか", "Not bad")], [1, tr("ちょっとズレた", "A bit off")], [9999, tr("時空がゆがんでる", "Time is warped")]],
   play(c) {
-    const box = c.el(`<div class="center"><div class="big" data-sw>0.00</div><p class="hint" data-msg>どこかをタップでスタート</p></div>`);
+    const box = c.el(tr(`<div class="center"><div class="big" data-sw>0.00</div><p class="hint" data-msg>どこかをタップでスタート</p></div>`, `<div class="center"><div class="big" data-sw>0.00</div><p class="hint" data-msg>Tap anywhere to start</p></div>`));
     const sw = box.querySelector("[data-sw]"), msg = box.querySelector("[data-msg]");
     let st = 0, running = false, done = false;
-    c.hud("目標 <b>10.00</b> 秒", "");
+    c.hud(tr("目標 <b>10.00</b> 秒", "Target <b>10.00</b> s"), "");
     c.loop(() => { if (running) { const t = (performance.now() - st) / 1000; sw.textContent = t < 3 ? t.toFixed(2) : "?.??"; } });
     c.on(c.stage, "pointerdown", e => {
       e.preventDefault(); if (done) return;
-      if (!running) { running = true; st = performance.now(); c.sfx.tick(); msg.textContent = "10.00秒だと思ったらタップ！"; return; }
+      if (!running) { running = true; st = performance.now(); c.sfx.tick(); msg.textContent = tr("10.00秒だと思ったらタップ！", "Tap when you think 10.00 seconds have passed!"); return; }
       const t = (performance.now() - st) / 1000, err = Math.abs(t - 10);
       running = false; done = true; sw.textContent = t.toFixed(2);
-      msg.textContent = err < 0.05 ? "ピッタリ！" : t < 10 ? "はやすぎ！" : "おそすぎ！";
+      msg.textContent = err < 0.05 ? tr("ピッタリ！", "Perfect!") : t < 10 ? tr("はやすぎ！", "Too early!") : tr("おそすぎ！", "Too late!");
       err < 0.15 ? c.sfx.ok(10) : c.sfx.ng();
       c.after(1300, () => c.end(Math.round(err * 1000) / 1000));
     });
@@ -484,48 +548,48 @@ game({
 
 /* ---------- 03 1→25タッチ ---------- */
 game({
-  id: "touch25", name: "1→25タッチ", glyph: "25", color: "#ffd66b", lower: true,
-  how: "1から25まで、順番にできるだけ速くタップしよう。まちがえると1秒プラス。",
-  fmt: s => s.toFixed(2) + "秒",
-  ranks: [[10, "神の指"], [14, "超高速"], [18, "すばやい"], [24, "ふつう"], [35, "のんびり"], [9999, "マイペース"]],
+  id: "touch25", name: tr("1→25タッチ", "1 to 25"), glyph: "25", color: "#ffd66b", lower: true,
+  how: tr("1から25まで、順番にできるだけ速くタップしよう。まちがえると1秒プラス。", "Tap 1 to 25 in order as fast as you can. A wrong tap adds 1 second."),
+  fmt: s => s.toFixed(2) + tr("秒", "s"),
+  ranks: [[10, tr("神の指", "Godlike fingers")], [14, tr("超高速", "Lightning fast")], [18, tr("すばやい", "Quick")], [24, tr("ふつう", "Average")], [35, tr("のんびり", "Leisurely")], [9999, tr("マイペース", "Own pace")]],
   play(c) {
     const g = c.el(`<div class="grid" style="grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr)"></div>`);
     g.innerHTML = shuffle([...Array(25)].map((_, i) => i + 1)).map(n => `<button class="cell" type="button" data-n="${n}">${n}</button>`).join("");
     let next = 1, pen = 0; const t0 = performance.now();
     const time = () => (performance.now() - t0) / 1000 + pen;
-    c.loop(() => c.hud(`つぎ <b>${next}</b>`, `<b>${time().toFixed(2)}</b> 秒`));
+    c.loop(() => c.hud(tr(`つぎ <b>${next}</b>`, `Next <b>${next}</b>`), tr(`<b>${time().toFixed(2)}</b> 秒`, `<b>${time().toFixed(2)}</b> s`)));
     c.on(g, "pointerdown", e => {
       const b = e.target.closest("[data-n]"); if (!b) return; e.preventDefault();
       if (+b.dataset.n === next) {
         b.style.background = "#1d1630"; b.style.color = "#fffdf7"; b.style.visibility = "hidden"; c.sfx.ok(Math.floor(next / 2)); next++;
         if (next > 25) c.end(Math.round(time() * 100) / 100);
-      } else if (b.style.visibility !== "hidden") { pen += 1; c.sfx.ng(); c.shake(); c.pop("+1秒", "#e8364f"); }
+      } else if (b.style.visibility !== "hidden") { pen += 1; c.sfx.ng(); c.shake(); c.pop(tr("+1秒", "+1s"), "#e8364f"); }
     });
   },
 });
 
 /* ---------- 04 反射神経 ---------- */
 game({
-  id: "reflex", name: "反射神経テスト", glyph: "反", color: "#a8ef9a", lower: true,
-  how: "画面が緑になった瞬間にタップ！5回の平均で勝負。赤のうちに押すとフライング。",
+  id: "reflex", name: tr("反射神経テスト", "Reaction Test"), glyph: "反", color: "#a8ef9a", lower: true,
+  how: tr("画面が緑になった瞬間にタップ！5回の平均で勝負。赤のうちに押すとフライング。", "Tap the moment the screen turns green! Average of 5 tries. Tapping on red is a false start."),
   fmt: s => Math.round(s) + "ms",
-  ranks: [[180, "チーター級"], [220, "プロゲーマー"], [260, "反射神経◎"], [320, "ふつう"], [400, "ねむい"], [99999, "冬眠中"]],
+  ranks: [[180, tr("チーター級", "Cheetah")], [220, tr("プロゲーマー", "Pro gamer")], [260, tr("反射神経◎", "Great reflexes")], [320, tr("ふつう", "Average")], [400, tr("ねむい", "Sleepy")], [99999, tr("冬眠中", "Hibernating")]],
   play(c) {
     const box = c.el(`<div class="center" style="transition:background .05s"><div class="big" data-t></div><p class="hint" data-m></p></div>`);
     const T = box.querySelector("[data-t]"), M = box.querySelector("[data-m]");
     let state = "idle", t0 = 0, token = 0; const times = [];
     const set = (bg, big, m) => { box.style.background = bg; T.textContent = big; M.textContent = m; };
-    const upd = () => c.hud(`<b>${times.length}</b> / 5 回`, times.length ? `平均 <b>${Math.round(times.reduce((a, b) => a + b) / times.length)}</b>ms` : "");
+    const upd = () => c.hud(tr(`<b>${times.length}</b> / 5 回`, `<b>${times.length}</b> / 5`), times.length ? tr(`平均 <b>${Math.round(times.reduce((a, b) => a + b) / times.length)}</b>ms`, `Avg <b>${Math.round(times.reduce((a, b) => a + b) / times.length)}</b>ms`) : "");
     function next() {
-      state = "wait"; const my = ++token; set("#ff8f9e", "まって…", "緑になったらタップ");
-      c.after(rnd(1200, 3600), () => { if (my !== token) return; state = "go"; t0 = performance.now(); set("#5fe08f", "今！", ""); });
+      state = "wait"; const my = ++token; set("#ff8f9e", tr("まって…", "Wait…"), tr("緑になったらタップ", "Tap when it turns green"));
+      c.after(rnd(1200, 3600), () => { if (my !== token) return; state = "go"; t0 = performance.now(); set("#5fe08f", tr("今！", "NOW!"), ""); });
     }
     c.on(c.stage, "pointerdown", e => {
       e.preventDefault();
-      if (state === "wait") { token++; state = "idle"; c.sfx.ng(); c.shake(); set("#ffd66b", "フライング！", "もう一回いくよ"); c.after(1000, next); }
+      if (state === "wait") { token++; state = "idle"; c.sfx.ng(); c.shake(); set("#ffd66b", tr("フライング！", "Too soon!"), tr("もう一回いくよ", "Let's try again")); c.after(1000, next); }
       else if (state === "go") {
         const ms = performance.now() - t0; times.push(ms); state = "idle"; c.sfx.ok(ms < 250 ? 12 : 4); upd();
-        set("#fffdf7", Math.round(ms) + "ms", times.length < 5 ? "次いくよ" : "");
+        set("#fffdf7", Math.round(ms) + "ms", times.length < 5 ? tr("次いくよ", "Next one") : "");
         if (times.length >= 5) c.after(900, () => c.end(times.reduce((a, b) => a + b) / 5)); else c.after(900, next);
       }
     });
@@ -535,10 +599,10 @@ game({
 
 /* ---------- 05 もぐらタップ ---------- */
 game({
-  id: "mole", name: "もぐらタップ", glyph: "叩", color: "#d9b38c",
-  how: "出てきたモグラをタップ！ボムをたたくと3秒へるよ。制限時間30秒。",
-  fmt: s => s + "匹",
-  ranks: [[45, "モグラハンター"], [35, "名人"], [27, "うまい"], [20, "ふつう"], [12, "のんびり"], [0, "モグラの友だち"]],
+  id: "mole", name: tr("もぐらタップ", "Whack-a-Mole"), glyph: "叩", color: "#d9b38c",
+  how: tr("出てきたモグラをタップ！ボムをたたくと3秒へるよ。制限時間30秒。", "Tap the moles as they pop up! Hitting a bomb costs 3 seconds. 30 seconds."),
+  fmt: s => s + tr("匹", " moles"),
+  ranks: [[45, tr("モグラハンター", "Mole hunter")], [35, tr("名人", "Master")], [27, tr("うまい", "Skilled")], [20, tr("ふつう", "Average")], [12, tr("のんびり", "Leisurely")], [0, tr("モグラの友だち", "Friend of moles")]],
   play(c) {
     const g = c.el(`<div class="grid" style="grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:12px"></div>`);
     g.innerHTML = [...Array(9)].map((_, i) => `<button class="cell" type="button" data-i="${i}" style="font-size:clamp(16px,5vw,24px)"></button>`).join("");
@@ -546,12 +610,12 @@ game({
     let score = 0;
     const draw = i => {
       const b = cells[i], s = st[i];
-      b.textContent = s ? (s.bomb ? "ボム" : "モグ") : "";
+      b.textContent = s ? (s.bomb ? tr("ボム", "BOMB") : tr("モグ", "MOLE")) : "";
       b.style.background = s ? (s.bomb ? "#1d1630" : "#b07a4f") : "#fffdf7";
       b.style.color = s ? (s.bomb ? "#ff5e6e" : "#fffdf7") : "";
     };
     const t = c.timer(30, () => c.end(score));
-    t.onTick = left => c.hud(`のこり <b>${left.toFixed(1)}</b>`, `<b>${score}</b> 匹`);
+    t.onTick = left => c.hud(tr(`のこり <b>${left.toFixed(1)}</b>`, `Time <b>${left.toFixed(1)}</b>`), tr(`<b>${score}</b> 匹`, `<b>${score}</b> moles`));
     let nextAt = 0;
     c.every(60, () => {
       const now = performance.now(), life = Math.max(480, 1150 - score * 16);
@@ -566,7 +630,7 @@ game({
       const b = e.target.closest("[data-i]"); if (!b) return; e.preventDefault();
       const i = +b.dataset.i, s = st[i]; if (!s) return;
       st[i] = null; draw(i);
-      if (s.bomb) { t.penalty(3); c.sfx.ng(); c.shake(); c.pop("-3秒", "#e8364f"); }
+      if (s.bomb) { t.penalty(3); c.sfx.ng(); c.shake(); c.pop(tr("-3秒", "-3s"), "#e8364f"); }
       else { score++; c.sfx.ok(score % 12); }
     });
   },
@@ -574,12 +638,12 @@ game({
 
 /* ---------- 06 いろ・ことば ---------- */
 game({
-  id: "stroop", name: "いろ・ことば", glyph: "色", color: "#c4b5ff",
-  how: "文字の「色」をタップ！ことばにだまされないで。たまに「ことばの方」を聞かれるよ。30秒。",
-  fmt: s => s + "問",
-  ranks: [[40, "脳トレの神"], [30, "だまされない人"], [22, "頭やわらか"], [15, "ふつう"], [8, "だまされがち"], [0, "混乱中"]],
+  id: "stroop", name: tr("いろ・ことば", "Color or Word"), glyph: "色", color: "#c4b5ff",
+  how: tr("文字の「色」をタップ！ことばにだまされないで。たまに「ことばの方」を聞かれるよ。30秒。", "Tap the COLOR of the text, not the word! Sometimes you'll be asked for the word instead. 30 seconds."),
+  fmt: s => s + tr("問", " correct"),
+  ranks: [[40, tr("脳トレの神", "Brain-training god")], [30, tr("だまされない人", "Can't be fooled")], [22, tr("頭やわらか", "Flexible mind")], [15, tr("ふつう", "Average")], [8, tr("だまされがち", "Easily fooled")], [0, tr("混乱中", "Confused")]],
   play(c) {
-    const C = [["あか", "#e8364f"], ["あお", "#2f6fe8"], ["きいろ", "#e0b000"], ["みどり", "#18a86b"]];
+    const C = [[tr("あか", "RED"), "#e8364f"], [tr("あお", "BLUE"), "#2f6fe8"], [tr("きいろ", "YELLOW"), "#e0b000"], [tr("みどり", "GREEN"), "#18a86b"]];
     const box = c.el(`<div class="center" style="justify-content:space-between;padding:24px 16px">
       <p class="hint" data-q style="font-size:18px"></p>
       <div class="big" data-w style="font-size:clamp(60px,20vw,96px);-webkit-text-stroke:2px #1d1630"></div>
@@ -590,14 +654,14 @@ game({
       const w = ri(0, 3); let ink = ri(0, 3); if (Math.random() < 0.8) while (ink === w) ink = ri(0, 3);
       const askWord = score >= 8 && Math.random() < 0.3;
       Wd.textContent = C[w][0]; Wd.style.color = C[ink][1];
-      Q.innerHTML = askWord ? `<b style="color:#e8364f">ことば</b>の方をタップ！` : `文字の<b>色</b>をタップ`;
+      Q.innerHTML = askWord ? tr(`<b style="color:#e8364f">ことば</b>の方をタップ！`, `Tap the <b style="color:#e8364f">WORD</b>!`) : tr(`文字の<b>色</b>をタップ`, `Tap the <b>color</b> of the text`);
       ans = askWord ? w : ink;
     }
     const t = c.timer(30, () => c.end(score));
-    t.onTick = left => c.hud(`のこり <b>${left.toFixed(1)}</b>`, `<b>${score}</b> 問`);
+    t.onTick = left => c.hud(tr(`のこり <b>${left.toFixed(1)}</b>`, `Time <b>${left.toFixed(1)}</b>`), tr(`<b>${score}</b> 問`, `<b>${score}</b> correct`));
     c.on(box, "pointerdown", e => {
       const b = e.target.closest("[data-c]"); if (!b) return; e.preventDefault();
-      if (+b.dataset.c === ans) { score++; c.sfx.ok(score % 12); } else { t.penalty(2); c.sfx.ng(); c.shake(); c.pop("-2秒", "#e8364f"); }
+      if (+b.dataset.c === ans) { score++; c.sfx.ok(score % 12); } else { t.penalty(2); c.sfx.ng(); c.shake(); c.pop(tr("-2秒", "-2s"), "#e8364f"); }
       next();
     });
     next();
@@ -606,10 +670,10 @@ game({
 
 /* ---------- 07 ○×暗算 ---------- */
 game({
-  id: "math", name: "○×暗算", glyph: "算", color: "#ffc48a",
-  how: "式が正しければ○、まちがっていれば×。どんどんむずかしくなるよ。まちがえると3秒へる。30秒。",
-  fmt: s => s + "問",
-  ranks: [[40, "人間電卓"], [30, "計算マスター"], [22, "かしこい"], [15, "ふつう"], [8, "文系"], [0, "電卓ください"]],
+  id: "math", name: tr("○×暗算", "True or False Math"), glyph: "算", color: "#ffc48a",
+  how: tr("式が正しければ○、まちがっていれば×。どんどんむずかしくなるよ。まちがえると3秒へる。30秒。", "Tap ○ if the equation is right, × if it's wrong. It gets harder as you go. A mistake costs 3 seconds. 30 seconds."),
+  fmt: s => s + tr("問", " correct"),
+  ranks: [[40, tr("人間電卓", "Human calculator")], [30, tr("計算マスター", "Math master")], [22, tr("かしこい", "Smart")], [15, tr("ふつう", "Average")], [8, tr("文系", "Words person")], [0, tr("電卓ください", "Need a calculator")]],
   play(c) {
     const box = c.el(`<div class="center" style="justify-content:space-around">
       <div class="big" data-q style="font-size:clamp(36px,11vw,56px)"></div>
@@ -630,9 +694,9 @@ game({
       q.textContent = `${a} ${op} ${b} = ${shown}`;
     }
     const t = c.timer(30, () => c.end(score));
-    t.onTick = left => c.hud(`のこり <b>${left.toFixed(1)}</b>`, `<b>${score}</b> 問`);
+    t.onTick = left => c.hud(tr(`のこり <b>${left.toFixed(1)}</b>`, `Time <b>${left.toFixed(1)}</b>`), tr(`<b>${score}</b> 問`, `<b>${score}</b> correct`));
     const answer = v => {
-      if (v === truth) { score++; c.sfx.ok(score % 12); } else { t.penalty(3); c.sfx.ng(); c.shake(); c.pop("-3秒", "#e8364f"); }
+      if (v === truth) { score++; c.sfx.ok(score % 12); } else { t.penalty(3); c.sfx.ng(); c.shake(); c.pop(tr("-3秒", "-3s"), "#e8364f"); }
       next();
     };
     c.on(box, "pointerdown", e => { const b = e.target.closest("[data-a]"); if (!b) return; e.preventDefault(); answer(b.dataset.a === "1"); });
@@ -643,14 +707,14 @@ game({
 
 /* ---------- 08 記憶パネル ---------- */
 game({
-  id: "memory", name: "記憶パネル", glyph: "憶", color: "#8fe3d3",
-  how: "光ったマスを覚えて、全部タップしよう。レベルが上がるほどマスが増える。ミス3回で終わり。",
-  fmt: s => "レベル" + s,
-  ranks: [[12, "写真記憶"], [9, "天才"], [7, "記憶力◎"], [5, "ふつう"], [3, "うっかり"], [0, "金魚の記憶"]],
+  id: "memory", name: tr("記憶パネル", "Memory Grid"), glyph: "憶", color: "#8fe3d3",
+  how: tr("光ったマスを覚えて、全部タップしよう。レベルが上がるほどマスが増える。ミス3回で終わり。", "Remember the tiles that light up, then tap them all. More tiles each level. 3 misses and you're out."),
+  fmt: s => tr("レベル", "Level ") + s,
+  ranks: [[12, tr("写真記憶", "Photographic memory")], [9, tr("天才", "Genius")], [7, tr("記憶力◎", "Great memory")], [5, tr("ふつう", "Average")], [3, tr("うっかり", "Forgetful")], [0, tr("金魚の記憶", "Goldfish memory")]],
   play(c) {
     let lv = 1, lives = 3, lock = true, want = new Set(), got = new Set();
     const g = c.el(`<div class="grid"></div>`);
-    const upd = () => c.hud(`レベル <b>${lv}</b>`, `ミスあと <b>${lives}</b>`);
+    const upd = () => c.hud(tr(`レベル <b>${lv}</b>`, `Level <b>${lv}</b>`), tr(`ミスあと <b>${lives}</b>`, `Lives <b>${lives}</b>`));
     function round() {
       const n = lv < 3 ? 3 : lv < 6 ? 4 : lv < 10 ? 5 : 6, k = Math.min(lv + 2, n * n - 2);
       g.style.gridTemplateColumns = `repeat(${n},1fr)`; g.style.gridTemplateRows = `repeat(${n},1fr)`;
@@ -664,7 +728,7 @@ game({
       const i = +b.dataset.i; if (got.has(i)) return;
       if (want.has(i)) {
         got.add(i); b.style.background = "#8fe3d3"; c.sfx.ok(got.size);
-        if (got.size === want.size) { lock = true; c.pop("クリア！"); lv++; c.after(700, round); }
+        if (got.size === want.size) { lock = true; c.pop(tr("クリア！", "Clear!")); lv++; c.after(700, round); }
       } else {
         lock = true; lives--; b.style.background = "#ff8f9e"; c.sfx.ng(); c.shake();
         want.forEach(j => { if (!got.has(j)) g.children[j].style.background = "#c9f3ea"; });
@@ -677,10 +741,10 @@ game({
 
 /* ---------- 09 光の順番 ---------- */
 game({
-  id: "simon", name: "光の順番", glyph: "光", color: "#ffe36b",
-  how: "光ったパネルの順番を覚えて、同じ順にタップ。1回ずつ長くなるよ。",
-  fmt: s => s + "コ",
-  ranks: [[15, "記憶の鬼"], [11, "すごい集中力"], [8, "なかなか"], [6, "ふつう"], [4, "うっかり"], [0, "見てなかった？"]],
+  id: "simon", name: tr("光の順番", "Light Sequence"), glyph: "光", color: "#ffe36b",
+  how: tr("光ったパネルの順番を覚えて、同じ順にタップ。1回ずつ長くなるよ。", "Remember the order the panels light up and tap them in the same order. It gets one longer each round."),
+  fmt: s => s + tr("コ", ""),
+  ranks: [[15, tr("記憶の鬼", "Memory demon")], [11, tr("すごい集中力", "Amazing focus")], [8, tr("なかなか", "Not bad")], [6, tr("ふつう", "Average")], [4, tr("うっかり", "Forgetful")], [0, tr("見てなかった？", "Were you watching?")]],
   play(c) {
     const P = [["#ff5e6e", 330], ["#2f8fff", 392], ["#ffd23f", 494], ["#2fcf7a", 587]];
     const g = c.el(`<div class="grid" style="grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:14px">
@@ -688,7 +752,7 @@ game({
     const pads = [...g.children], seq = []; let pos = 0, lock = true;
     const flash = (i, ms = 320) => { pads[i].style.opacity = "1"; pads[i].style.transform = "scale(1.04)"; beep(P[i][1], ms / 1000, "triangle");
       c.after(ms, () => { pads[i].style.opacity = ".45"; pads[i].style.transform = ""; }); };
-    const upd = () => c.hud(lock ? "見てて…" : "<b>あなたの番</b>", `<b>${Math.max(0, seq.length - 1)}</b> クリア`);
+    const upd = () => c.hud(lock ? tr("見てて…", "Watch…") : tr("<b>あなたの番</b>", "<b>Your turn</b>"), tr(`<b>${Math.max(0, seq.length - 1)}</b> クリア`, `<b>${Math.max(0, seq.length - 1)}</b> cleared`));
     function play() {
       seq.push(ri(0, 3)); pos = 0; lock = true; upd();
       const gap = Math.max(260, 620 - seq.length * 25);
@@ -700,7 +764,7 @@ game({
       const i = +b.dataset.i; flash(i, 200);
       if (i !== seq[pos]) { lock = true; c.sfx.ng(); c.shake(); c.after(700, () => c.end(seq.length - 1)); return; }
       pos++;
-      if (pos === seq.length) { lock = true; c.pop(seq.length + "コ！"); c.after(700, play); }
+      if (pos === seq.length) { lock = true; c.pop(seq.length + tr("コ！", "!")); c.after(700, play); }
     });
     play();
   },
@@ -708,10 +772,10 @@ game({
 
 /* ---------- 10 ふわっとジャンプ ---------- */
 game({
-  id: "flap", name: "ふわっとジャンプ", glyph: "跳", color: "#9be7ff",
-  how: "タップでふわっと上にジャンプ。柱のすき間をくぐり抜けよう。",
-  fmt: s => s + "本",
-  ranks: [[50, "空の支配者"], [30, "鳥より鳥"], [18, "うまい"], [10, "ふつう"], [4, "あとちょっと"], [0, "地面が好き"]],
+  id: "flap", name: tr("ふわっとジャンプ", "Floaty Jump"), glyph: "跳", color: "#9be7ff",
+  how: tr("タップでふわっと上にジャンプ。柱のすき間をくぐり抜けよう。", "Tap to float upward and fly through the gaps between the pillars."),
+  fmt: s => s + tr("本", " pipes"),
+  ranks: [[50, tr("空の支配者", "Ruler of the sky")], [30, tr("鳥より鳥", "Birdier than birds")], [18, tr("うまい", "Skilled")], [10, tr("ふつう", "Average")], [4, tr("あとちょっと", "Almost")], [0, tr("地面が好き", "Loves the ground")]],
   play(c) {
     const { x, W, H } = c.canvas(), k = H / 600;
     const bird = { x: W * 0.28, y: H * 0.45, vy: 0, r: 13 * k + 4 };
@@ -720,7 +784,7 @@ game({
     const flap = () => { if (dead) return; started = true; bird.vy = -360 * k; c.sfx.tick(); };
     c.on(c.stage, "pointerdown", e => { e.preventDefault(); flap(); });
     c.on(window, "keydown", e => { if (e.code === "Space" || e.key === "ArrowUp") { e.preventDefault(); flap(); } });
-    c.hud("", `<b>0</b> 本`);
+    c.hud("", tr(`<b>0</b> 本`, `<b>0</b> pipes`));
     const die = () => { if (dead) return; dead = true; c.sfx.ng(); c.shake(); c.after(800, () => c.end(score)); };
     c.loop(dt => {
       const sp = (150 + Math.min(score, 40) * 2.2) * (W / 360);
@@ -731,7 +795,7 @@ game({
           if (dist > W * 0.62 || !pipes.length) { dist = 0; const gap = Math.max(H * 0.22, H * 0.32 - score * 2.5 * k); pipes.push({ x: W + 10, gy: rnd(H * 0.12, H * 0.82 - gap), gap, done: false }); }
           pipes.forEach(p => {
             p.x -= sp * dt;
-            if (!p.done && p.x + PW < bird.x) { p.done = true; score++; c.sfx.ok(score % 12); c.hud("", `<b>${score}</b> 本`); }
+            if (!p.done && p.x + PW < bird.x) { p.done = true; score++; c.sfx.ok(score % 12); c.hud("", tr(`<b>${score}</b> 本`, `<b>${score}</b> pipes`)); }
             if (bird.x + bird.r > p.x && bird.x - bird.r < p.x + PW && (bird.y - bird.r < p.gy || bird.y + bird.r > p.gy + p.gap)) die();
           });
           pipes = pipes.filter(p => p.x > -PW - 10);
@@ -752,17 +816,17 @@ game({
       x.fillStyle = "#ff8a3d"; x.beginPath(); x.moveTo(bird.r * .8, 0); x.lineTo(bird.r * 1.35, bird.r * .15); x.lineTo(bird.r * .8, bird.r * .35); x.fill(); x.restore();
       x.textAlign = "center"; x.font = `${Math.round(W * .15)}px ${FD}`; x.lineWidth = 6; x.strokeStyle = "#1d1630"; x.fillStyle = "#fffdf7";
       x.strokeText(score, W / 2, H * .15); x.fillText(score, W / 2, H * .15);
-      if (!started) { x.font = `800 16px ${FB}`; x.fillStyle = "#1d1630"; x.fillText("タップでジャンプ", W / 2, H * .15 + 32); }
+      if (!started) { x.font = `800 16px ${FB}`; x.fillStyle = "#1d1630"; x.fillText(tr("タップでジャンプ", "Tap to jump"), W / 2, H * .15 + 32); }
     });
   },
 });
 
 /* ---------- 11 よけまくれ ---------- */
 game({
-  id: "dodge", name: "よけまくれ", glyph: "避", color: "#ff9e9e",
-  how: "指を左右に動かして、落ちてくるブロックをよけ続けよう。どんどん速くなるよ。",
-  fmt: s => s.toFixed(1) + "秒",
-  ranks: [[60, "無敵"], [40, "見切り名人"], [25, "かなりうまい"], [15, "いい感じ"], [8, "まだまだ"], [0, "即アウト"]],
+  id: "dodge", name: tr("よけまくれ", "Dodge It"), glyph: "避", color: "#ff9e9e",
+  how: tr("指を左右に動かして、落ちてくるブロックをよけ続けよう。どんどん速くなるよ。", "Move your finger left and right to dodge the falling blocks. They keep getting faster."),
+  fmt: s => s.toFixed(1) + tr("秒", "s"),
+  ranks: [[60, tr("無敵", "Invincible")], [40, tr("見切り名人", "Dodge master")], [25, tr("かなりうまい", "Really good")], [15, tr("いい感じ", "Nice")], [8, tr("まだまだ", "Keep trying")], [0, tr("即アウト", "Instant out")]],
   play(c) {
     const { x, W, H } = c.canvas();
     const P = { w: W * 0.11, h: W * 0.11, x: W / 2, y: H - W * 0.11 - 18 };
@@ -787,7 +851,7 @@ game({
           }
         });
         rocks = rocks.filter(r => r.y < H + 20);
-        c.hud("", `<b>${t.toFixed(1)}</b> 秒`);
+        c.hud("", tr(`<b>${t.toFixed(1)}</b> 秒`, `<b>${t.toFixed(1)}</b> s`));
       }
       x.fillStyle = "#fff1f1"; x.fillRect(0, 0, W, H);
       x.strokeStyle = "rgba(29,22,48,.06)"; x.lineWidth = 1; for (let i = 0; i < W; i += 30) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, H); x.stroke(); }
@@ -800,16 +864,16 @@ game({
 
 /* ---------- 12 ぴったりサイズ ---------- */
 game({
-  id: "circle", name: "ぴったりサイズ", glyph: "円", color: "#b8f0c0",
-  how: "画面を押しているあいだ円がふくらむよ。点線の円とぴったり同じ大きさで指をはなそう。5回勝負。",
+  id: "circle", name: tr("ぴったりサイズ", "Perfect Size"), glyph: "円", color: "#b8f0c0",
+  how: tr("画面を押しているあいだ円がふくらむよ。点線の円とぴったり同じ大きさで指をはなそう。5回勝負。", "The circle grows while you hold. Release when it matches the dotted circle exactly. 5 rounds."),
   fmt: s => s.toFixed(1) + "%",
-  ranks: [[98, "目がものさし"], [95, "職人の目"], [91, "いい感覚"], [85, "ふつう"], [75, "ざっくり"], [0, "感覚派"]],
+  ranks: [[98, tr("目がものさし", "Ruler eyes")], [95, tr("職人の目", "Craftsman's eye")], [91, tr("いい感覚", "Good sense")], [85, tr("ふつう", "Average")], [75, tr("ざっくり", "Rough guess")], [0, tr("感覚派", "Free spirit")]],
   play(c) {
     const { x, W, H } = c.canvas();
     let round = 0, R = 0, r = 0, holding = false, speed = 0, res = [], phase = "ready", msg = "";
     const cx = W / 2, cy = H / 2;
     function next() { round++; R = rnd(Math.min(W, H) * 0.12, Math.min(W, H) * 0.42); r = 0; speed = (90 + round * 25) * (W / 360); phase = "ready"; msg = ""; upd(); }
-    const upd = () => c.hud(`<b>${Math.min(round, 5)}</b> / 5 回`, res.length ? `平均 <b>${(res.reduce((a, b) => a + b) / res.length).toFixed(1)}</b>%` : "");
+    const upd = () => c.hud(tr(`<b>${Math.min(round, 5)}</b> / 5 回`, `<b>${Math.min(round, 5)}</b> / 5`), res.length ? tr(`平均 <b>${(res.reduce((a, b) => a + b) / res.length).toFixed(1)}</b>%`, `Avg <b>${(res.reduce((a, b) => a + b) / res.length).toFixed(1)}</b>%`) : "");
     function release() {
       if (!holding) return; holding = false; phase = "show";
       const acc = Math.max(0, 100 - Math.abs(r - R) / R * 100); res.push(acc); upd();
@@ -824,7 +888,7 @@ game({
       x.setLineDash([10, 8]); x.strokeStyle = "#1d1630"; x.lineWidth = 3; x.beginPath(); x.arc(cx, cy, R, 0, 7); x.stroke(); x.setLineDash([]);
       if (r > 0) { x.fillStyle = "rgba(47,207,122,.55)"; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); x.strokeStyle = "#1d1630"; x.lineWidth = 3; x.stroke(); }
       x.textAlign = "center"; x.fillStyle = "#1d1630";
-      if (phase === "ready") { x.font = `800 16px ${FB}`; x.fillText("押しっぱなしでふくらむ", cx, H - 30); }
+      if (phase === "ready") { x.font = `800 16px ${FB}`; x.fillText(tr("押しっぱなしでふくらむ", "Hold to grow"), cx, H - 30); }
       if (msg) { x.font = `${Math.round(W * .12)}px ${FD}`; x.lineWidth = 6; x.strokeStyle = "#fffdf7"; x.strokeText(msg, cx, cy + W * .04); x.fillText(msg, cx, cy + W * .04); }
     });
     next();
@@ -833,24 +897,29 @@ game({
 
 /* ---------- 13 ゾーンでとめろ ---------- */
 game({
-  id: "zone", name: "ゾーンでとめろ", glyph: "止", color: "#ffcf4a",
-  how: "行ったり来たりする針が、色のゾーンに入った瞬間にタップ。成功するたびゾーンがせまく、針が速くなる。",
-  fmt: s => s + "回",
-  ranks: [[30, "神タイミング"], [20, "音ゲー勢"], [14, "うまい"], [9, "ふつう"], [5, "おしい"], [0, "ノーリズム"]],
+  id: "zone", name: tr("ゾーンでとめろ", "Stop in the Zone"), glyph: "止", color: "#ffcf4a",
+  how: tr("行ったり来たりする針が、色のゾーンに入った瞬間にタップ。成功するたびゾーンがせまく、針が速くなる。", "Tap when the swinging needle is inside the colored zone. Each hit makes the zone narrower and the needle faster."),
+  fmt: s => s + tr("回", " hits"),
+  ranks: [[30, tr("神タイミング", "Godlike timing")], [20, tr("音ゲー勢", "Rhythm gamer")], [14, tr("うまい", "Skilled")], [9, tr("ふつう", "Average")], [5, tr("おしい", "So close")], [0, tr("ノーリズム", "No rhythm")]],
   play(c) {
-    const box = c.el(`<div class="center" style="gap:26px">
+    const box = c.el(tr(`<div class="center" style="gap:26px">
       <div class="big" data-s>0</div>
       <div data-bar style="position:relative;width:100%;height:64px;border:2.5px solid #1d1630;border-radius:14px;background:#fffdf7;overflow:hidden">
         <div data-z style="position:absolute;top:0;bottom:0;background:#ffcf4a;border-left:2.5px solid #1d1630;border-right:2.5px solid #1d1630"></div>
         <div data-n style="position:absolute;top:-4px;bottom:-4px;width:6px;margin-left:-3px;background:#1d1630;border-radius:3px"></div></div>
-      <p class="hint">針がゾーンに入ったらタップ</p></div>`);
+      <p class="hint">針がゾーンに入ったらタップ</p></div>`, `<div class="center" style="gap:26px">
+      <div class="big" data-s>0</div>
+      <div data-bar style="position:relative;width:100%;height:64px;border:2.5px solid #1d1630;border-radius:14px;background:#fffdf7;overflow:hidden">
+        <div data-z style="position:absolute;top:0;bottom:0;background:#ffcf4a;border-left:2.5px solid #1d1630;border-right:2.5px solid #1d1630"></div>
+        <div data-n style="position:absolute;top:-4px;bottom:-4px;width:6px;margin-left:-3px;background:#1d1630;border-radius:3px"></div></div>
+      <p class="hint">Tap when the needle is in the zone</p></div>`));
     const Z = box.querySelector("[data-z]"), N = box.querySelector("[data-n]"), S = box.querySelector("[data-s]");
     let score = 0, p = 0, dir = 1, zx = 0, zw = 0, dead = false;
     const nz = () => { zw = Math.max(0.05, 0.3 - score * 0.012); zx = rnd(0.05, 0.95 - zw); Z.style.left = zx * 100 + "%"; Z.style.width = zw * 100 + "%"; };
-    nz(); c.hud("", "<b>0</b> 回");
+    nz(); c.hud("", tr("<b>0</b> 回", "<b>0</b> hits"));
     const tap = () => {
       if (dead) return;
-      if (p >= zx && p <= zx + zw) { score++; S.textContent = score; c.sfx.ok(score % 12); c.hud("", `<b>${score}</b> 回`); nz(); if (score % 5 === 0) c.pop(score + "回！"); }
+      if (p >= zx && p <= zx + zw) { score++; S.textContent = score; c.sfx.ok(score % 12); c.hud("", tr(`<b>${score}</b> 回`, `<b>${score}</b> hits`)); nz(); if (score % 5 === 0) c.pop(score + tr("回！", " hits!")); }
       else { dead = true; N.style.background = "#e8364f"; c.sfx.ng(); c.shake(); c.after(700, () => c.end(score)); }
     };
     c.on(c.stage, "pointerdown", e => { e.preventDefault(); tap(); });
@@ -861,13 +930,14 @@ game({
 
 /* ---------- 14 大きいのはどっち ---------- */
 game({
-  id: "bigger", name: "大きいのはどっち", glyph: "大", color: "#a6c8ff",
-  how: "大きいほうの数をタップ！途中から計算式も出てくるよ。まちがえると2秒へる。30秒。",
-  fmt: s => s + "問",
-  ranks: [[45, "瞬間判断"], [35, "頭の回転◎"], [26, "すばやい"], [18, "ふつう"], [10, "じっくり派"], [0, "どっちも好き"]],
+  id: "bigger", name: tr("大きいのはどっち", "Which Is Bigger?"), glyph: "大", color: "#a6c8ff",
+  how: tr("大きいほうの数をタップ！途中から計算式も出てくるよ。まちがえると2秒へる。30秒。", "Tap the bigger number! Equations join in later. A mistake costs 2 seconds. 30 seconds."),
+  fmt: s => s + tr("問", " correct"),
+  ranks: [[45, tr("瞬間判断", "Instant judge")], [35, tr("頭の回転◎", "Quick thinker")], [26, tr("すばやい", "Quick")], [18, tr("ふつう", "Average")], [10, tr("じっくり派", "Takes it slow")], [0, tr("どっちも好き", "Likes both")]],
   play(c) {
-    const box = c.el(`<div class="center"><p class="hint">大きいのはどっち？</p><div class="row2" style="height:52%">
-      <button class="choice" type="button" data-k="0" style="background:#e3edff"></button><button class="choice" type="button" data-k="1" style="background:#fff0d6"></button></div></div>`);
+    const box = c.el(tr(`<div class="center"><p class="hint">大きいのはどっち？</p><div class="row2" style="height:52%">
+      <button class="choice" type="button" data-k="0" style="background:#e3edff"></button><button class="choice" type="button" data-k="1" style="background:#fff0d6"></button></div></div>`, `<div class="center"><p class="hint">Which is bigger?</p><div class="row2" style="height:52%">
+      <button class="choice" type="button" data-k="0" style="background:#e3edff"></button><button class="choice" type="button" data-k="1" style="background:#fff0d6"></button></div></div>`));
     const B = [...box.querySelectorAll("[data-k]")];
     let score = 0, vals = [0, 0];
     const expr = () => {
@@ -881,8 +951,8 @@ game({
       vals = [a[0], b[0]]; B[0].textContent = a[1]; B[1].textContent = b[1];
     }
     const t = c.timer(30, () => c.end(score));
-    t.onTick = left => c.hud(`のこり <b>${left.toFixed(1)}</b>`, `<b>${score}</b> 問`);
-    const answer = k => { if (vals[k] > vals[1 - k]) { score++; c.sfx.ok(score % 12); } else { t.penalty(2); c.sfx.ng(); c.shake(); c.pop("-2秒", "#e8364f"); } next(); };
+    t.onTick = left => c.hud(tr(`のこり <b>${left.toFixed(1)}</b>`, `Time <b>${left.toFixed(1)}</b>`), tr(`<b>${score}</b> 問`, `<b>${score}</b> correct`));
+    const answer = k => { if (vals[k] > vals[1 - k]) { score++; c.sfx.ok(score % 12); } else { t.penalty(2); c.sfx.ng(); c.shake(); c.pop(tr("-2秒", "-2s"), "#e8364f"); } next(); };
     c.on(box, "pointerdown", e => { const b = e.target.closest("[data-k]"); if (!b) return; e.preventDefault(); answer(+b.dataset.k); });
     c.on(window, "keydown", e => { if (e.key === "ArrowLeft") answer(0); if (e.key === "ArrowRight") answer(1); });
     next();
@@ -891,18 +961,18 @@ game({
 
 /* ---------- 15 神経衰弱 ---------- */
 game({
-  id: "pairs", name: "神経衰弱タイムアタック", glyph: "双", color: "#ffb8e6", lower: true,
-  how: "カードをめくって、同じ絵のペアを全部そろえよう。タイムが短いほど上位。",
-  fmt: s => s.toFixed(1) + "秒",
-  ranks: [[18, "写真記憶"], [25, "記憶の達人"], [33, "いい感じ"], [45, "ふつう"], [60, "のんびり"], [9999, "ゆっくり派"]],
+  id: "pairs", name: tr("神経衰弱タイムアタック", "Memory Match Time Attack"), glyph: "双", color: "#ffb8e6", lower: true,
+  how: tr("カードをめくって、同じ絵のペアを全部そろえよう。タイムが短いほど上位。", "Flip the cards and match every pair. The faster, the better."),
+  fmt: s => s.toFixed(1) + tr("秒", "s"),
+  ranks: [[18, tr("写真記憶", "Photographic memory")], [25, tr("記憶の達人", "Memory master")], [33, tr("いい感じ", "Nice")], [45, tr("ふつう", "Average")], [60, tr("のんびり", "Leisurely")], [9999, tr("ゆっくり派", "Slow and steady")]],
   play(c) {
-    const S = [["猫", "#ff8f9e"], ["犬", "#ffc48a"], ["星", "#ffe36b"], ["月", "#a6c8ff"], ["花", "#ffb8e6"], ["雪", "#c9f3ea"], ["火", "#ff9e6b"], ["水", "#8fd4ff"]];
+    const S = [[tr("猫", "🐱"), "#ff8f9e"], [tr("犬", "🐶"), "#ffc48a"], [tr("星", "⭐"), "#ffe36b"], [tr("月", "🌙"), "#a6c8ff"], [tr("花", "🌸"), "#ffb8e6"], [tr("雪", "❄️"), "#c9f3ea"], [tr("火", "🔥"), "#ff9e6b"], [tr("水", "💧"), "#8fd4ff"]];
     const deck = shuffle([...Array(16)].map((_, i) => i % 8));
     const g = c.el(`<div class="grid" style="grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr)"></div>`);
     g.innerHTML = deck.map((v, i) => `<button class="cell" type="button" data-i="${i}" style="background:#1d1630"></button>`).join("");
     const cards = [...g.children]; let open = [], done = 0, lock = false; const t0 = performance.now();
     const show = (i, on) => { const b = cards[i]; b.textContent = on ? S[deck[i]][0] : ""; b.style.background = on ? S[deck[i]][1] : "#1d1630"; };
-    c.loop(() => c.hud(`<b>${done}</b> / 8 ペア`, `<b>${((performance.now() - t0) / 1000).toFixed(1)}</b> 秒`));
+    c.loop(() => c.hud(tr(`<b>${done}</b> / 8 ペア`, `<b>${done}</b> / 8 pairs`), tr(`<b>${((performance.now() - t0) / 1000).toFixed(1)}</b> 秒`, `<b>${((performance.now() - t0) / 1000).toFixed(1)}</b> s`)));
     c.on(g, "pointerdown", e => {
       const b = e.target.closest("[data-i]"); if (!b || lock) return; e.preventDefault();
       const i = +b.dataset.i; if (open.includes(i) || b.dataset.done) return;
@@ -918,17 +988,17 @@ game({
 
 /* ---------- 16 この色だけ割れ ---------- */
 game({
-  id: "bubble", name: "この色だけ割れ", glyph: "泡", color: "#a5e8ff",
-  how: "上に表示された色のシャボン玉だけをタップ！ちがう色を割ると1点へる。色は途中で変わるよ。30秒。",
-  fmt: s => s + "個",
-  ranks: [[55, "バブルマスター"], [42, "動体視力◎"], [32, "うまい"], [22, "ふつう"], [12, "あわてんぼう"], [0, "泡に負けた"]],
+  id: "bubble", name: tr("この色だけ割れ", "Pop Only This Color"), glyph: "泡", color: "#a5e8ff",
+  how: tr("上に表示された色のシャボン玉だけをタップ！ちがう色を割ると1点へる。色は途中で変わるよ。30秒。", "Pop only the bubbles of the color shown at the top! Popping the wrong color loses a point. The color changes along the way. 30 seconds."),
+  fmt: s => s + tr("個", " bubbles"),
+  ranks: [[55, tr("バブルマスター", "Bubble master")], [42, tr("動体視力◎", "Sharp eyes")], [32, tr("うまい", "Skilled")], [22, tr("ふつう", "Average")], [12, tr("あわてんぼう", "Too hasty")], [0, tr("泡に負けた", "Beaten by bubbles")]],
   play(c) {
     const { x, W, H } = c.canvas();
-    const C = [["ピンク", "#ff7aa8"], ["あお", "#4d8dff"], ["きいろ", "#ffd23f"], ["みどり", "#3fd67f"]];
+    const C = [[tr("ピンク", "PINK"), "#ff7aa8"], [tr("あお", "BLUE"), "#4d8dff"], [tr("きいろ", "YELLOW"), "#ffd23f"], [tr("みどり", "GREEN"), "#3fd67f"]];
     let bs = [], score = 0, target = 0, spawnT = 0, changeT = 6;
     const tag = () => `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${C[target][1]};border:2px solid #1d1630;vertical-align:-2px"></span> <b>${C[target][0]}</b>`;
     const t = c.timer(30, () => c.end(score));
-    t.onTick = left => c.hud(`${tag()} を割れ`, `<b>${score}</b> 個 / のこり <b>${left.toFixed(0)}</b>`);
+    t.onTick = left => c.hud(tr(`${tag()} を割れ`, `Pop ${tag()}`), tr(`<b>${score}</b> 個 / のこり <b>${left.toFixed(0)}</b>`, `<b>${score}</b> popped / Time <b>${left.toFixed(0)}</b>`));
     c.on(c.stage, "pointerdown", e => {
       e.preventDefault(); const r = c.stage.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top;
       for (let i = bs.length - 1; i >= 0; i--) {
@@ -941,7 +1011,7 @@ game({
     });
     c.loop(dt => {
       spawnT -= dt; changeT -= dt;
-      if (changeT <= 0) { let n; do { n = ri(0, 3); } while (n === target); target = n; changeT = rnd(5, 7); c.pop(C[target][0] + "に変更！", C[target][1]); }
+      if (changeT <= 0) { let n; do { n = ri(0, 3); } while (n === target); target = n; changeT = rnd(5, 7); c.pop(C[target][0] + tr("に変更！", " now!"), C[target][1]); }
       if (spawnT <= 0) {
         const r = rnd(W * 0.06, W * 0.1), want = Math.random() < 0.4;
         let col = want ? target : ri(0, 3);
@@ -961,10 +1031,10 @@ game({
 
 /* ---------- 17 10をつくれ ---------- */
 game({
-  id: "make10", name: "10をつくれ", glyph: "十", color: "#ffd8a8",
-  how: "足して10になる2つの数をタップして消そう。30秒で何組つくれる？",
-  fmt: s => s + "組",
-  ranks: [[30, "算数の神"], [22, "計算マシーン"], [16, "すばやい"], [11, "ふつう"], [6, "じっくり派"], [0, "数字がきらい"]],
+  id: "make10", name: tr("10をつくれ", "Make 10 Pairs"), glyph: "十", color: "#ffd8a8",
+  how: tr("足して10になる2つの数をタップして消そう。30秒で何組つくれる？", "Tap two numbers that add up to 10 to clear them. How many pairs in 30 seconds?"),
+  fmt: s => s + tr("組", " pairs"),
+  ranks: [[30, tr("算数の神", "Math god")], [22, tr("計算マシーン", "Calculating machine")], [16, tr("すばやい", "Quick")], [11, tr("ふつう", "Average")], [6, tr("じっくり派", "Takes it slow")], [0, tr("数字がきらい", "Hates numbers")]],
   play(c) {
     const g = c.el(`<div class="grid" style="grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr)"></div>`);
     const v = [...Array(16)].map(() => ri(1, 9));
@@ -975,7 +1045,7 @@ game({
     const draw = () => cells.forEach((b, i) => { b.textContent = v[i]; b.style.background = i === sel ? "#ffd8a8" : ""; });
     ensure(); draw();
     const t = c.timer(30, () => c.end(score));
-    t.onTick = left => c.hud(`のこり <b>${left.toFixed(1)}</b>`, `<b>${score}</b> 組`);
+    t.onTick = left => c.hud(tr(`のこり <b>${left.toFixed(1)}</b>`, `Time <b>${left.toFixed(1)}</b>`), tr(`<b>${score}</b> 組`, `<b>${score}</b> pairs`));
     c.on(g, "pointerdown", e => {
       const b = e.target.closest("[data-i]"); if (!b) return; e.preventDefault();
       const i = +b.dataset.i;
@@ -990,24 +1060,29 @@ game({
 
 /* ---------- 18 矢印スワイプ ---------- */
 game({
-  id: "arrow", name: "矢印スワイプ", glyph: "矢", color: "#7fd8ff",
-  how: "青い矢印は同じ向き、赤い矢印は逆向きにスワイプ（ボタンでもOK）。まちがえると3秒へる。30秒。",
-  fmt: s => s + "回",
-  ranks: [[45, "反射の鬼"], [34, "すばやい"], [25, "うまい"], [17, "ふつう"], [9, "あたまがこんがらがる"], [0, "逆ばっかり"]],
+  id: "arrow", name: tr("矢印スワイプ", "Arrow Swipe"), glyph: "矢", color: "#7fd8ff",
+  how: tr("青い矢印は同じ向き、赤い矢印は逆向きにスワイプ（ボタンでもOK）。まちがえると3秒へる。30秒。", "Swipe the same way as a blue arrow and the opposite way for a red one (buttons work too). A mistake costs 3 seconds. 30 seconds."),
+  fmt: s => s + tr("回", " hits"),
+  ranks: [[45, tr("反射の鬼", "Reflex demon")], [34, tr("すばやい", "Quick")], [25, tr("うまい", "Skilled")], [17, tr("ふつう", "Average")], [9, tr("あたまがこんがらがる", "Tangled brain")], [0, tr("逆ばっかり", "Always backwards")]],
   play(c) {
     const D = ["↑", "→", "↓", "←"];
-    const box = c.el(`<div class="center" style="justify-content:space-between;padding:20px 16px">
+    const box = c.el(tr(`<div class="center" style="justify-content:space-between;padding:20px 16px">
       <p class="hint"><b style="color:#2f6fe8">青</b>は同じ向き / <b style="color:#e8364f">赤</b>は逆向き</p>
       <div data-a style="font-size:clamp(90px,32vw,150px);line-height:1;font-weight:900;font-family:${FD}"></div>
       <div style="display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,56px);gap:8px">
         <span></span><button class="choice" type="button" data-d="0" style="padding:0;font-size:26px">↑</button><span></span>
-        <button class="choice" type="button" data-d="3" style="padding:0;font-size:26px">←</button><button class="choice" type="button" data-d="2" style="padding:0;font-size:26px">↓</button><button class="choice" type="button" data-d="1" style="padding:0;font-size:26px">→</button></div></div>`);
+        <button class="choice" type="button" data-d="3" style="padding:0;font-size:26px">←</button><button class="choice" type="button" data-d="2" style="padding:0;font-size:26px">↓</button><button class="choice" type="button" data-d="1" style="padding:0;font-size:26px">→</button></div></div>`, `<div class="center" style="justify-content:space-between;padding:20px 16px">
+      <p class="hint"><b style="color:#2f6fe8">Blue</b>: same way / <b style="color:#e8364f">Red</b>: opposite</p>
+      <div data-a style="font-size:clamp(90px,32vw,150px);line-height:1;font-weight:900;font-family:${FD}"></div>
+      <div style="display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,56px);gap:8px">
+        <span></span><button class="choice" type="button" data-d="0" style="padding:0;font-size:26px">↑</button><span></span>
+        <button class="choice" type="button" data-d="3" style="padding:0;font-size:26px">←</button><button class="choice" type="button" data-d="2" style="padding:0;font-size:26px">↓</button><button class="choice" type="button" data-d="1" style="padding:0;font-size:26px">→</button></div></div>`));
     const A = box.querySelector("[data-a]");
     let score = 0, dir = 0, red = false, sx = 0, sy = 0, swiping = false;
     function next() { dir = ri(0, 3); red = score >= 3 && Math.random() < 0.45; A.textContent = D[dir]; A.style.color = red ? "#e8364f" : "#2f6fe8"; }
     const t = c.timer(30, () => c.end(score));
-    t.onTick = left => c.hud(`のこり <b>${left.toFixed(1)}</b>`, `<b>${score}</b> 回`);
-    const answer = d => { const want = red ? (dir + 2) % 4 : dir; if (d === want) { score++; c.sfx.ok(score % 12); } else { t.penalty(3); c.sfx.ng(); c.shake(); c.pop("-3秒", "#e8364f"); } next(); };
+    t.onTick = left => c.hud(tr(`のこり <b>${left.toFixed(1)}</b>`, `Time <b>${left.toFixed(1)}</b>`), tr(`<b>${score}</b> 回`, `<b>${score}</b> hits`));
+    const answer = d => { const want = red ? (dir + 2) % 4 : dir; if (d === want) { score++; c.sfx.ok(score % 12); } else { t.penalty(3); c.sfx.ng(); c.shake(); c.pop(tr("-3秒", "-3s"), "#e8364f"); } next(); };
     c.on(box, "pointerdown", e => {
       const b = e.target.closest("[data-d]"); e.preventDefault();
       if (b) { answer(+b.dataset.d); return; }
@@ -1025,10 +1100,10 @@ game({
 
 /* ---------- 19 ヘビ ---------- */
 game({
-  id: "snake", name: "ヘビのごはん", glyph: "蛇", color: "#b6ef8a",
-  how: "スワイプかボタンでヘビを動かして、ごはんを食べよう。壁や自分の体にぶつかると終わり。",
-  fmt: s => s + "コ",
-  ranks: [[40, "大蛇"], [25, "ヘビ使い"], [15, "うまい"], [9, "ふつう"], [4, "ちびヘビ"], [0, "まだ赤ちゃん"]],
+  id: "snake", name: tr("ヘビのごはん", "Snake Snack"), glyph: "蛇", color: "#b6ef8a",
+  how: tr("スワイプかボタンでヘビを動かして、ごはんを食べよう。壁や自分の体にぶつかると終わり。", "Swipe or use the buttons to steer the snake to its food. Hitting a wall or yourself ends the game."),
+  fmt: s => s + tr("コ", ""),
+  ranks: [[40, tr("大蛇", "Giant serpent")], [25, tr("ヘビ使い", "Snake charmer")], [15, tr("うまい", "Skilled")], [9, tr("ふつう", "Average")], [4, tr("ちびヘビ", "Little snake")], [0, tr("まだ赤ちゃん", "Still a baby")]],
   play(c) {
     const { x, W, H } = c.canvas();
     const N = 15, padH = 130, size = Math.min(W - 20, H - padH - 16), cell = size / N, ox = (W - size) / 2, oy = 10;
@@ -1050,7 +1125,7 @@ game({
     });
     c.on(window, "pointerup", () => sw = false);
     c.on(window, "keydown", e => { const k = { ArrowUp: 0, ArrowRight: 1, ArrowDown: 2, ArrowLeft: 3 }[e.key]; if (k !== undefined) { e.preventDefault(); turn(DIRS[k]); } });
-    c.hud("", "<b>0</b> コ");
+    c.hud("", tr("<b>0</b> コ", "<b>0</b>"));
     c.loop(dt => {
       if (!dead) {
         acc += dt; const step = Math.max(0.065, 0.16 - score * 0.004);
@@ -1059,7 +1134,7 @@ game({
           const h = [sn[0][0] + dir[0], sn[0][1] + dir[1]];
           if (h[0] < 0 || h[1] < 0 || h[0] >= N || h[1] >= N || sn.some(s => s[0] === h[0] && s[1] === h[1])) { dead = true; c.sfx.ng(); c.shake(); c.after(800, () => c.end(score)); break; }
           sn.unshift(h);
-          if (h[0] === food[0] && h[1] === food[1]) { score++; c.sfx.ok(score % 12); c.hud("", `<b>${score}</b> コ`); place(); } else sn.pop();
+          if (h[0] === food[0] && h[1] === food[1]) { score++; c.sfx.ok(score % 12); c.hud("", tr(`<b>${score}</b> コ`, `<b>${score}</b>`)); place(); } else sn.pop();
         }
       }
       x.fillStyle = "#f4ffe9"; x.fillRect(0, 0, W, H);
@@ -1079,10 +1154,10 @@ game({
 
 /* ---------- 20 ブロック崩し ---------- */
 game({
-  id: "breakout", name: "ブロック崩し", glyph: "崩", color: "#ffa8a8",
-  how: "指でバーを左右に動かしてボールを打ち返そう。タップで発射。ボールは3つ。",
-  fmt: s => s + "コ",
-  ranks: [[80, "破壊神"], [50, "崩しのプロ"], [32, "うまい"], [20, "ふつう"], [10, "もうちょい"], [0, "バーが短い？"]],
+  id: "breakout", name: tr("ブロック崩し", "Brick Breaker"), glyph: "崩", color: "#ffa8a8",
+  how: tr("指でバーを左右に動かしてボールを打ち返そう。タップで発射。ボールは3つ。", "Move the paddle left and right to bounce the ball back. Tap to launch. You have 3 balls."),
+  fmt: s => s + tr("コ", ""),
+  ranks: [[80, tr("破壊神", "God of destruction")], [50, tr("崩しのプロ", "Demolition pro")], [32, tr("うまい", "Skilled")], [20, tr("ふつう", "Average")], [10, tr("もうちょい", "Almost there")], [0, tr("バーが短い？", "Paddle too short?")]],
   play(c) {
     const { x, W, H } = c.canvas();
     const pw = W * 0.24, ph = 12, py = H - 34, br = Math.max(6, W * 0.018);
@@ -1091,7 +1166,7 @@ game({
     const hue = ["#ff7aa8", "#ffb35c", "#ffd23f", "#5fd08a", "#4d8dff"];
     const build = () => { wave++; bricks = []; for (let r = 0; r < ROWS; r++) for (let k = 0; k < COLS; k++) bricks.push({ x: 10 + k * (bw + gap), y: 50 + r * (bh + gap), c: hue[r] }); };
     const serve = () => { ball = { x: px, y: py - br - 2, vx: 0, vy: 0, stuck: true }; };
-    const upd = () => c.hud(`ボール ${"●".repeat(lives)}${"○".repeat(3 - lives)}`, `<b>${score}</b> コ`);
+    const upd = () => c.hud(tr(`ボール ${"●".repeat(lives)}${"○".repeat(3 - lives)}`, `Balls ${"●".repeat(lives)}${"○".repeat(3 - lives)}`), tr(`<b>${score}</b> コ`, `<b>${score}</b>`));
     build(); serve(); upd();
     const launch = () => { if (ball && ball.stuck) { const sp = (330 + wave * 30) * (H / 640); const a = rnd(-0.5, 0.5); ball.vx = Math.sin(a) * sp; ball.vy = -Math.cos(a) * sp; ball.stuck = false; c.sfx.tick(); } };
     const move = e => { const r = c.stage.getBoundingClientRect(); px = Math.max(pw / 2, Math.min(W - pw / 2, e.clientX - r.left)); };
@@ -1131,12 +1206,14 @@ game({
       bricks.forEach(b => { x.fillStyle = b.c; x.fillRect(b.x, b.y, bw, bh); x.strokeStyle = "#1d1630"; x.lineWidth = 2; x.strokeRect(b.x, b.y, bw, bh); });
       x.fillStyle = "#1d1630"; x.fillRect(px - pw / 2, py, pw, ph);
       if (ball && !dead) { x.fillStyle = "#fffdf7"; x.beginPath(); x.arc(ball.x, ball.y, br, 0, 7); x.fill(); x.strokeStyle = "#1d1630"; x.lineWidth = 2.5; x.stroke(); }
-      if (ball && ball.stuck && !dead) { x.fillStyle = "#1d1630"; x.font = `800 15px ${FB}`; x.textAlign = "center"; x.fillText("タップで発射", W / 2, H * 0.6); }
+      if (ball && ball.stuck && !dead) { x.fillStyle = "#1d1630"; x.font = `800 15px ${FB}`; x.textAlign = "center"; x.fillText(tr("タップで発射", "Tap to launch"), W / 2, H * 0.6); }
     });
   },
 });
 
 boot();
+window.go = go; window.GAMES = GAMES; Object.defineProperty(window, "ctx", { get: () => ctx }); Object.defineProperty(window, "cur", { get: () => cur });
+});
 </script>
 </body>
 </html>
